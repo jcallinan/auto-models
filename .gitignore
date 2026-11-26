@@ -2,3 +2,5 @@ node_modules/
 shots/
 *.blend1
 .DS_Store
+__pycache__/
+tools/preview/model.glb

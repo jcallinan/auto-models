@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>preview</title>
+<style>html,body{margin:0;height:100%;background:#15171a;overflow:hidden}canvas{display:block;width:100%;height:100%}</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"}}</script>
+</head><body><canvas id="c"></canvas>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+const q = new URLSearchParams(location.search);
+const r = new THREE.WebGLRenderer({ canvas: c, antialias: true, preserveDrawingBuffer: true });
+r.toneMapping = THREE.ACESFilmicToneMapping; r.shadowMap.enabled = true;
+const s = new THREE.Scene(); s.background = new THREE.Color(0x8c96a3);
+s.environment = new THREE.PMREMGenerator(r).fromScene(new RoomEnvironment(), 0.04).texture; s.environmentIntensity = 0.7;
+const sun = new THREE.DirectionalLight(0xffffff, 2.2); sun.position.set(5, 9, 6); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -5, right: 5, top: 5, bottom: -5 }); s.add(sun, new THREE.HemisphereLight(0xffffff, 0x333333, 0.6));
+const fl = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.MeshStandardMaterial({ color: 0x5a5d61, roughness: 0.95 })); fl.rotation.x = -Math.PI / 2; fl.receiveShadow = true; s.add(fl);
+const cam = new THREE.PerspectiveCamera(30, 1, 0.02, 100);
+const g = await new GLTFLoader().loadAsync(q.get('f'));
+g.scene.traverse(o => { if (o.isMesh) { o.castShadow = o.receiveShadow = true; } });
+s.add(g.scene);
+const parts = []; g.scene.traverse(o => { if (o.isMesh) parts.push([o, o.position.clone()]); });
+function size() { r.setSize(innerWidth, innerHeight, false); cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix(); }
+size();
+window.__shot = (p, t, fov = 30, explode = 0) => {
+  cam.fov = fov; cam.position.set(...p); cam.lookAt(...t); cam.updateProjectionMatrix();
+  const box = new THREE.Box3().setFromObject(g.scene), ctr = box.getCenter(new THREE.Vector3());
+  r.render(s, cam); return true;
+};
+window.__ready = true;
+</script></body></html>

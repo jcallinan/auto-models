@@ -12,10 +12,49 @@ Factory dimensions and the details taken from the photos are in [`reference/spec
 ## Layout
 
 ```
-reference/   photos of both cars + spec sheet
-generator/   v0 procedural builder (Node + three.js) that lofts each body from spec tables
-  viewer/    three.js viewer page (loads the .glb files)
-models/v0/   exported .glb from the v0 builder
+reference/     photos of both cars + spec sheet
+blender/       v1 builder (Blender Python, bpy): panelised, rigged, Unity-ready
+  carlib.py    loft -> classify -> seam smoothing -> panel split with gaps -> thickness/bevel -> pivots
+  rav4.py      RAV4 profile tables, panel map, detail parts
+  e90.py       325xi profile tables, panel map, detail parts
+  build.py     python3 build.py rav4|e90  ->  models/v1/<Name>.{blend,fbx,glb}
+  weblod.py    decimated copy for the web viewer
+models/v1/     current models (.fbx for Unity, .blend source, .glb)
+models/v0/     first single-shell prototype (superseded)
+viewer/        three.js rig viewer (pack.py embeds models/v1/web/*.glb)
+tools/         headless render check (shoot.py)
+generator/     v0 Node builder (superseded)
+```
+
+## v1 (current)
+
+Each car is a hierarchy of separate panels with real panel gaps, ~2.8 mm thickness and rolled edges:
+
+```
+<Car>
+  Body/            fixed panels: roof, fenders, quarters, A-pillars, bumpers, rockers, flares, underbody, lamps, glass, grille, Chassis_Tub
+  Door_FL_Pivot/   pivot on the front hinge line; door skin, glass, handle, mirror
+  Door_FR_Pivot/ Door_RL_Pivot/ Door_RR_Pivot/
+  Hood_Pivot/      pivot at the cowl hinge
+  Liftgate_Pivot/ (RAV4)  Trunk_Pivot/ (325xi)   pivot at the top hinge
+  Suspension_FL/   steer pivot at the hub centre; brake caliper
+    Wheel_FL/      spin pivot (local X); tyre, tread, rim, rotor, lug nuts
+  Suspension_FR/ Suspension_RL/ Suspension_RR/
+```
+
+`Chassis_Tub` is a dark inner shell: when panels move during a transform, you see machinery-coloured structure instead of empty space.
+
+Budget: RAV4 ~900k triangles / 119 meshes, 325xi ~840k / 111 meshes. This is a hero LOD0 meant for close-ups. Make in-game LODs with Unity's LOD Group or `weblod.py`.
+
+### Unity import
+Drop `models/v1/*.fbx` into `Assets/`. The FBX is exported with -Z forward and Y up, with transforms baked, so the car faces +Z at 1 unit = 1 m with no rotation fix. Rotate the `*_Pivot` objects' local axes to animate the doors, hood and trunk; spin `Wheel_*` around local X; steer `Suspension_F*` around local Y.
+
+### Rebuild
+```
+pip install bpy          # Blender as a Python module (5.x)
+cd blender
+python3 build.py rav4
+python3 build.py e90
 ```
 
 ## Conventions (apply to every model version)
