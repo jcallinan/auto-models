@@ -1,0 +1,4 @@
+node_modules/
+shots/
+*.blend1
+.DS_Store

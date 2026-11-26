@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Garage — RAV4 &amp; 325xi 3D Models</title>
+<style>
+  :root { --bg:#0f1114; --panel:rgba(22,25,30,.86); --line:rgba(255,255,255,.09); --txt:#e8eaed; --dim:#9aa1aa; --acc:#7fb4ff; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; background:var(--bg); color:var(--txt); font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; overflow:hidden; }
+  #c { position:fixed; inset:0; width:100%; height:100%; display:block; touch-action:none; }
+  .bar { position:fixed; left:50%; transform:translateX(-50%); display:flex; gap:4px; padding:4px; background:var(--panel); border:1px solid var(--line); border-radius:12px; backdrop-filter:blur(8px); }
+  #cars { top:12px; }
+  #views { bottom:12px; }
+  button { appearance:none; border:0; background:transparent; color:var(--dim); font:inherit; font-weight:600; padding:8px 12px; border-radius:9px; cursor:pointer; white-space:nowrap; }
+  button.on { background:#2b313a; color:var(--txt); }
+  button:hover { color:var(--txt); }
+  #info { position:fixed; left:12px; top:64px; width:250px; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px 14px; backdrop-filter:blur(8px); }
+  #info h2 { margin:0 0 2px; font-size:15px; }
+  #info .sub { color:var(--dim); font-size:12px; margin-bottom:8px; }
+  #info table { width:100%; border-collapse:collapse; font-size:12.5px; font-variant-numeric:tabular-nums; }
+  #info td { padding:3px 0; border-top:1px solid var(--line); }
+  #info td:last-child { text-align:right; color:var(--txt); }
+  #info td:first-child { color:var(--dim); }
+  #info .note { color:var(--dim); font-size:11.5px; margin-top:8px; }
+  #toggle { position:fixed; right:12px; top:64px; }
+  #toggle button { background:var(--panel); border:1px solid var(--line); }
+  #load { position:fixed; inset:0; display:grid; place-items:center; color:var(--dim); pointer-events:none; }
+  @media (max-width: 640px) {
+    #info { top:auto; bottom:64px; left:8px; right:8px; width:auto; padding:10px 12px; }
+    #info.hide { display:none; }
+    #info table { font-size:12px; }
+    button { padding:7px 10px; font-size:13px; }
+  }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="load">Loading models…</div>
+<div class="bar" id="cars">
+  <button data-car="rav4" class="on">RAV4</button>
+  <button data-car="e90">325xi</button>
+  <button data-car="both">Side by side</button>
+</div>
+<div id="toggle"><button id="infoBtn">Specs</button></div>
+<div id="info"></div>
+<div class="bar" id="views">
+  <button data-view="front34" class="on">¾ front</button>
+  <button data-view="side">Side</button>
+  <button data-view="rear34">¾ rear</button>
+  <button data-view="top">Top</button>
+  <button id="spin">Spin</button>
+</div>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+const SPEC = {
+  rav4: { title: '2023 Toyota RAV4 LE AWD', sub: 'Magnetic Gray · aftermarket black mesh wheels · A/T tires', file: 'Toyota_RAV4_2023_LE.glb',
+    rows: [['Length','180.9 in · 4595 mm'],['Width','73.0 in · 1855 mm'],['Height','67.0 in · 1702 mm'],['Wheelbase','105.9 in · 2690 mm'],['Track F / R','63.4 / 64.6 in'],['Ground clearance','8.4 in'],['Tire (modelled)','225/65R17 · 28.5 in dia']] },
+  e90: { title: '2006 BMW 325xi (E90)', sub: 'Sparkling Graphite · gloss black kidneys & mirrors · black 17s on winters', file: 'BMW_325xi_2006_E90.glb',
+    rows: [['Length','178.0 in · 4520 mm'],['Width','71.5 in · 1817 mm'],['Height','55.9 in · 1421 mm'],['Wheelbase','108.7 in · 2760 mm'],['Track F / R','59.1 / 59.6 in'],['Ground clearance','~5.5 in'],['Tire (modelled)','225/45R17 · 25.0 in dia']] },
+};
+
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 0.9;
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x0f1114);
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture; scene.environmentIntensity = 0.55;
+const camera = new THREE.PerspectiveCamera(32, 1, 0.05, 200);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true; controls.maxPolarAngle = Math.PI * 0.495; controls.minDistance = 2; controls.maxDistance = 25;
+
+const sun = new THREE.DirectionalLight(0xffffff, 1.6); sun.position.set(4, 8, 5); sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -6, right: 6, top: 6, bottom: -6, near: 1, far: 30 }); sun.shadow.bias = -0.0004;
+scene.add(sun, new THREE.HemisphereLight(0xdfe8ff, 0x202020, 0.5));
+const floor = new THREE.Mesh(new THREE.CircleGeometry(14, 64), new THREE.MeshStandardMaterial({ color: 0x24272c, roughness: 0.9 }));
+floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+const grid = new THREE.GridHelper(20, 20, 0x3a3f47, 0x2c3037); grid.position.y = 0.001; scene.add(grid);
+
+const loader = new GLTFLoader();
+const models = {};
+await Promise.all(Object.entries(SPEC).map(async ([k, s]) => {
+  const g = await loader.loadAsync(s.file);
+  g.scene.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  models[k] = g.scene; scene.add(g.scene);
+}));
+document.getElementById('load').remove();
+
+let car = 'rav4', view = 'front34', spin = false;
+const info = document.getElementById('info');
+function showInfo() {
+  const keys = car === 'both' ? ['rav4', 'e90'] : [car];
+  info.innerHTML = keys.map(k => { const s = SPEC[k]; return `<h2>${s.title}</h2><div class="sub">${s.sub}</div><table>${s.rows.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('')}</table>`; }).join('<div style="height:10px"></div>')
+    + `<div class="note">Built to factory dimensions. Drag to orbit, pinch to zoom.</div>`;
+}
+function layout() {
+  models.rav4.visible = car !== 'e90'; models.e90.visible = car !== 'rav4';
+  models.rav4.position.x = car === "both" ? -1.45 : 0; models.e90.position.x = car === "both" ? 1.45 : 0;
+  models.rav4.position.z = 0; models.e90.position.z = car === 'both' ? -0.04 : 0;
+  showInfo(); setView(view, true);
+}
+function setView(v, snap) {
+  view = v;
+  const both = car === 'both';
+  const d = both ? 1.45 : 1.0, h = car === 'e90' ? 0.6 : 0.75;
+  const target = new THREE.Vector3(0, h, 0);
+  const P = { front34: [5.2, 1.7, 6.4], side: [8.6, 1.1, 0.0], rear34: [-5.2, 1.9, -6.4], top: [0.01, 11.5, 0.6] }[v];
+  camera.position.set(P[0] * d, P[1] * (v === 'top' ? d : 1) + (v === 'top' ? 0 : 0), P[2] * d);
+  if (v === 'side') camera.position.set(8.6 * d, 1.1, 0);
+  controls.target.copy(target); controls.update();
+}
+function syncButtons() {
+  document.querySelectorAll('#cars button').forEach(b => b.classList.toggle('on', b.dataset.car === car));
+  document.querySelectorAll('#views button[data-view]').forEach(b => b.classList.toggle('on', b.dataset.view === view));
+  document.getElementById('spin').classList.toggle('on', spin);
+}
+document.querySelectorAll('#cars button').forEach(b => b.onclick = () => { car = b.dataset.car; layout(); syncButtons(); });
+document.querySelectorAll('#views button[data-view]').forEach(b => b.onclick = () => { setView(b.dataset.view); syncButtons(); });
+document.getElementById('spin').onclick = () => { spin = !spin; controls.autoRotate = spin; controls.autoRotateSpeed = 1.2; syncButtons(); };
+document.getElementById('infoBtn').onclick = () => info.classList.toggle('hide');
+if (innerWidth < 640) info.classList.add('hide');
+
+function resize() { const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.fov = w < h ? 48 : 32; camera.updateProjectionMatrix(); }
+addEventListener('resize', resize); resize(); layout();
+renderer.setAnimationLoop(() => { controls.update(); renderer.render(scene, camera); });
+window.__view = (c, v) => { car = c; layout(); setView(v); syncButtons(); controls.update(); renderer.render(scene, camera); return true; };
+window.__cam = (c, p, t) => { car = c; layout(); camera.position.set(...p); controls.target.set(...t); controls.update(); renderer.render(scene, camera); return true; };
+window.__ready = true;
+</script>
+</body>
+</html>
