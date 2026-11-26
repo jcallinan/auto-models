@@ -57,6 +57,10 @@ python3 build.py rav4
 python3 build.py e90
 ```
 
+## Live viewer
+
+`docs/` is a static three.js viewer, deployed to GitHub Pages by `.github/workflows/pages.yml` on every push to `main` that changes `docs/`. The site will be at **https://jcallinan.github.io/auto-models/**.
+
 ## Conventions (apply to every model version)
 
 - Units: metres. Ground at Y = 0.
